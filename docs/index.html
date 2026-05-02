@@ -1,0 +1,2000 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>C-Lite Interpreter — CO523</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ── Reset & Base ─────────────────────────────────────────────────────── */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      :root {
+        --bg: #09090f;
+        --surface: #111118;
+        --surface2: #181825;
+        --border: #2a2a3a;
+        --accent: #00e5ff;
+        --accent2: #7b61ff;
+        --accent3: #ff6b6b;
+        --green: #00ff88;
+        --text: #e8e8f0;
+        --muted: #666680;
+        --font-display: sans-serif;
+        --font-mono: "Space Mono", monospace;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font-mono);
+        font-size: 14px;
+        line-height: 1.7;
+        overflow-x: hidden;
+      }
+
+      /* ── Noise texture overlay ────────────────────────────────────────────── */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+        pointer-events: none;
+        z-index: 9999;
+        opacity: 0.4;
+      }
+
+      /* ── Scrollbar ────────────────────────────────────────────────────────── */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--bg);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 3px;
+      }
+
+      /* ── Nav ──────────────────────────────────────────────────────────────── */
+      nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 2.5rem;
+        background: rgba(9, 9, 15, 0.85);
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid var(--border);
+      }
+      .nav-logo {
+        font-family: var(--font-display);
+        font-weight: 800;
+        font-size: 1.1rem;
+        color: var(--accent);
+        letter-spacing: -0.02em;
+      }
+      .nav-logo span {
+        color: var(--text);
+      }
+      .nav-links {
+        display: flex;
+        gap: 2rem;
+        list-style: none;
+      }
+      .nav-links a {
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 0.75rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        transition: color 0.2s;
+      }
+      .nav-links a:hover {
+        color: var(--accent);
+      }
+
+      /* ── Hero ─────────────────────────────────────────────────────────────── */
+      #hero {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 6rem 2rem 4rem;
+        position: relative;
+        overflow: hidden;
+        text-align: center;
+      }
+      .hero-grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(var(--border) 1px, transparent 1px),
+          linear-gradient(90deg, var(--border) 1px, transparent 1px);
+        background-size: 60px 60px;
+        mask-image: radial-gradient(
+          ellipse 80% 60% at 50% 50%,
+          black 30%,
+          transparent 100%
+        );
+        opacity: 0.3;
+      }
+      .hero-glow {
+        position: absolute;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(
+          circle,
+          rgba(0, 229, 255, 0.08) 0%,
+          transparent 70%
+        );
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+      }
+      .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(0, 229, 255, 0.08);
+        border: 1px solid rgba(0, 229, 255, 0.2);
+        color: var(--accent);
+        font-size: 0.7rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        padding: 0.35rem 0.9rem;
+        border-radius: 100px;
+        margin-bottom: 2rem;
+        animation: fadeUp 0.6s ease both;
+      }
+      .hero-badge::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        animation: pulse 2s ease infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.4;
+          transform: scale(0.8);
+        }
+      }
+      h1 {
+        font-family: var(--font-display);
+        font-size: clamp(2.8rem, 7vw, 5.5rem);
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: -0.04em;
+        margin-bottom: 1.5rem;
+        animation: fadeUp 0.7s 0.1s ease both;
+      }
+      h1 .accent {
+        color: var(--accent);
+      }
+      h1 .accent2 {
+        color: var(--accent2);
+      }
+      .hero-sub {
+        max-width: 560px;
+        color: var(--muted);
+        font-family: var(--font-display);
+        font-weight: 400;
+        font-size: 1rem;
+        line-height: 1.7;
+        margin-bottom: 3rem;
+        animation: fadeUp 0.7s 0.2s ease both;
+      }
+      .hero-cta {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        justify-content: center;
+        animation: fadeUp 0.7s 0.3s ease both;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.75rem;
+        border-radius: 6px;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #000;
+      }
+      .btn-primary:hover {
+        background: #33eaff;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 229, 255, 0.3);
+      }
+      .btn-outline {
+        background: transparent;
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+      .btn-outline:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+        transform: translateY(-2px);
+      }
+
+      /* pipeline diagram */
+      .pipeline {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        margin-top: 4rem;
+        animation: fadeUp 0.7s 0.4s ease both;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+      }
+      .pipe-node {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        padding: 0.6rem 1.2rem;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        transition: all 0.3s;
+      }
+      .pipe-node:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .pipe-arrow {
+        color: var(--border);
+        font-size: 1.2rem;
+        padding: 0 0.25rem;
+      }
+
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* ── Section base ─────────────────────────────────────────────────────── */
+      section {
+        padding: 5rem 2rem;
+      }
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .section-label {
+        font-size: 0.7rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .section-label::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+      }
+      h2 {
+        font-family: var(--font-display);
+        font-size: clamp(1.8rem, 4vw, 2.8rem);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        margin-bottom: 1rem;
+        line-height: 1.1;
+      }
+      .section-desc {
+        color: var(--muted);
+        max-width: 540px;
+        margin-bottom: 3rem;
+        font-family: var(--font-display);
+        font-weight: 400;
+      }
+
+      /* ── Features ─────────────────────────────────────────────────────────── */
+      #features {
+        background: var(--surface);
+      }
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .feature-card {
+        background: var(--surface2);
+        padding: 2rem;
+        transition: background 0.2s;
+        position: relative;
+        overflow: hidden;
+      }
+      .feature-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, var(--accent), var(--accent2));
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 0.3s;
+      }
+      .feature-card:hover {
+        background: var(--surface);
+      }
+      .feature-card:hover::before {
+        transform: scaleX(1);
+      }
+      .feature-icon {
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        display: inline-block;
+      }
+      .feature-card h3 {
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+        color: var(--text);
+      }
+      .feature-card p {
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.6;
+        font-family: var(--font-display);
+      }
+      code {
+        background: rgba(0, 229, 255, 0.08);
+        color: var(--accent);
+        padding: 0.1em 0.4em;
+        border-radius: 3px;
+        font-family: var(--font-mono);
+        font-size: 0.85em;
+      }
+
+      /* ── Architecture ─────────────────────────────────────────────────────── */
+      #architecture {
+        background: var(--bg);
+      }
+      .arch-flow {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 3rem;
+      }
+      .arch-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+        position: relative;
+        transition:
+          border-color 0.2s,
+          transform 0.2s;
+      }
+      .arch-card:hover {
+        border-color: var(--accent2);
+        transform: translateY(-4px);
+      }
+      .arch-num {
+        font-size: 3rem;
+        font-weight: 700;
+        color: rgba(123, 97, 255, 0.15);
+        line-height: 1;
+        margin-bottom: 0.5rem;
+        font-family: var(--font-display);
+      }
+      .arch-card h3 {
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 0.95rem;
+        margin-bottom: 0.4rem;
+        color: var(--accent);
+      }
+      .arch-card .file {
+        font-size: 0.7rem;
+        color: var(--muted);
+        margin-bottom: 0.75rem;
+      }
+      .arch-card p {
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.5;
+        font-family: var(--font-display);
+      }
+
+      /* ── Grammar ──────────────────────────────────────────────────────────── */
+      #grammar {
+        background: var(--surface);
+      }
+      .grammar-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+      }
+      @media (max-width: 700px) {
+        .grammar-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .grammar-block {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+      }
+      .grammar-block h3 {
+        font-size: 0.7rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--accent2);
+        margin-bottom: 1rem;
+      }
+      pre {
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        line-height: 1.8;
+        color: var(--text);
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      pre .kw {
+        color: var(--accent);
+      }
+      pre .op {
+        color: var(--accent3);
+      }
+      pre .cm {
+        color: var(--muted);
+      }
+      pre .str {
+        color: var(--green);
+      }
+
+      /* ── Precedence table ─────────────────────────────────────────────────── */
+      .prec-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+      }
+      .prec-table th,
+      .prec-table td {
+        padding: 0.6rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.8rem;
+      }
+      .prec-table th {
+        color: var(--muted);
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .prec-table tr:last-child td {
+        border-bottom: none;
+      }
+      .prec-table tr:hover td {
+        background: rgba(0, 229, 255, 0.03);
+      }
+      .badge {
+        display: inline-block;
+        padding: 0.15rem 0.5rem;
+        border-radius: 3px;
+        font-size: 0.65rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .badge-high {
+        background: rgba(0, 229, 255, 0.1);
+        color: var(--accent);
+      }
+      .badge-low {
+        background: rgba(255, 107, 107, 0.1);
+        color: var(--accent3);
+      }
+
+      /* ── Demo ─────────────────────────────────────────────────────────────── */
+      #demo {
+        background: var(--bg);
+      }
+      .demo-wrapper {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow:
+          0 0 0 1px rgba(0, 229, 255, 0.05),
+          0 32px 64px rgba(0, 0, 0, 0.5);
+      }
+      .demo-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 1.25rem;
+        background: var(--surface2);
+        border-bottom: 1px solid var(--border);
+      }
+      .demo-dots {
+        display: flex;
+        gap: 0.4rem;
+      }
+      .dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+      }
+      .dot-r {
+        background: #ff5f57;
+      }
+      .dot-y {
+        background: #febc2e;
+      }
+      .dot-g {
+        background: #28c840;
+      }
+      .demo-title {
+        font-size: 0.7rem;
+        color: var(--muted);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .demo-body {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        min-height: 420px;
+      }
+      @media (max-width: 700px) {
+        .demo-body {
+          grid-template-columns: 1fr;
+        }
+      }
+      .demo-editor-pane {
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+      }
+      .demo-output-pane {
+        display: flex;
+        flex-direction: column;
+      }
+      .pane-label {
+        padding: 0.5rem 1rem;
+        font-size: 0.65rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        border-bottom: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      #editor {
+        flex: 1;
+        width: 100%;
+        background: transparent;
+        border: none;
+        outline: none;
+        resize: none;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        color: var(--text);
+        line-height: 1.8;
+        padding: 1.25rem;
+        caret-color: var(--accent);
+        tab-size: 4;
+      }
+      #output {
+        flex: 1;
+        padding: 1.25rem;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        line-height: 1.8;
+        overflow-y: auto;
+        min-height: 200px;
+      }
+      .out-line {
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-start;
+        margin-bottom: 0.2rem;
+      }
+      .out-arrow {
+        color: var(--accent);
+        flex-shrink: 0;
+      }
+      .out-err {
+        color: var(--accent3);
+      }
+      .out-ok {
+        color: var(--green);
+      }
+      .out-info {
+        color: var(--muted);
+      }
+      .demo-footer {
+        padding: 0.75rem 1.25rem;
+        background: var(--surface2);
+        border-top: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+      .run-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--accent);
+        color: #000;
+        border: none;
+        cursor: pointer;
+        padding: 0.55rem 1.4rem;
+        border-radius: 5px;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        transition: all 0.2s;
+      }
+      .run-btn:hover:not(:disabled) {
+        background: #33eaff;
+        box-shadow: 0 4px 16px rgba(0, 229, 255, 0.3);
+      }
+      .run-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .clear-btn {
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid var(--border);
+        cursor: pointer;
+        padding: 0.5rem 1rem;
+        border-radius: 5px;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        transition: all 0.2s;
+      }
+      .clear-btn:hover {
+        color: var(--text);
+        border-color: var(--text);
+      }
+      .status-pill {
+        margin-left: auto;
+        font-size: 0.65rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        color: var(--muted);
+      }
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--muted);
+      }
+      .status-dot.ready {
+        background: var(--green);
+        animation: pulse 2s infinite;
+      }
+      .status-dot.loading {
+        background: #febc2e;
+        animation: pulse 0.8s infinite;
+      }
+      .status-dot.error {
+        background: var(--accent3);
+      }
+
+      /* snippets */
+      .snippets {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        padding: 0.75rem 1.25rem;
+        border-top: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.15);
+      }
+      .snippet-btn {
+        background: rgba(123, 97, 255, 0.1);
+        color: var(--accent2);
+        border: 1px solid rgba(123, 97, 255, 0.2);
+        padding: 0.3rem 0.75rem;
+        border-radius: 4px;
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        letter-spacing: 0.05em;
+      }
+      .snippet-btn:hover {
+        background: rgba(123, 97, 255, 0.2);
+        border-color: var(--accent2);
+      }
+
+      /* ── Tests ────────────────────────────────────────────────────────────── */
+      #tests {
+        background: var(--surface);
+      }
+      .tests-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
+      }
+      .test-card {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 1rem 1.25rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        transition: border-color 0.2s;
+      }
+      .test-card:hover {
+        border-color: var(--green);
+      }
+      .test-id {
+        font-size: 0.65rem;
+        color: var(--muted);
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        padding: 0.2rem 0.5rem;
+        border-radius: 3px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        margin-top: 0.1rem;
+      }
+      .test-info h4 {
+        font-size: 0.85rem;
+        color: var(--text);
+        margin-bottom: 0.2rem;
+      }
+      .test-info p {
+        font-size: 0.75rem;
+        color: var(--muted);
+        font-family: var(--font-display);
+      }
+      .test-pass {
+        color: var(--green);
+        font-size: 0.7rem;
+        margin-top: 0.3rem;
+      }
+
+      /* ── Footer ───────────────────────────────────────────────────────────── */
+      footer {
+        padding: 3rem 2rem;
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+        text-align: center;
+      }
+      .footer-inner {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      .footer-logo {
+        font-family: var(--font-display);
+        font-weight: 800;
+        font-size: 1.5rem;
+        color: var(--accent);
+        letter-spacing: -0.03em;
+        margin-bottom: 0.5rem;
+      }
+      .footer-info {
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.8;
+        font-family: var(--font-display);
+      }
+      .footer-divider {
+        height: 1px;
+        background: var(--border);
+        margin: 2rem 0;
+      }
+      .footer-meta {
+        color: var(--muted);
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+      }
+
+      /* ── Scroll reveal ────────────────────────────────────────────────────── */
+      .reveal {
+        opacity: 0;
+        transform: translateY(24px);
+        transition:
+          opacity 0.6s ease,
+          transform 0.6s ease;
+      }
+      .reveal.visible {
+        opacity: 1;
+        transform: none;
+      }
+
+      /* ── Responsive layout ───────────────────────────────────────────────── */
+      @media (max-width: 900px) {
+        nav {
+          padding: 0.9rem 1.5rem;
+        }
+        #hero {
+          padding: 6.5rem 1.5rem 3.5rem;
+        }
+        .hero-glow {
+          width: 460px;
+          height: 460px;
+        }
+        .features-grid {
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        }
+        .tests-grid {
+          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        }
+        .demo-body {
+          min-height: 380px;
+        }
+      }
+
+      @media (max-width: 720px) {
+        nav {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.75rem;
+          padding: 0.8rem 1.25rem;
+        }
+        .nav-links {
+          flex-wrap: wrap;
+          gap: 0.9rem 1.2rem;
+        }
+        .nav-links a {
+          font-size: 0.68rem;
+        }
+        section {
+          padding: 3.75rem 1.25rem;
+        }
+        .hero-badge {
+          text-align: center;
+          white-space: normal;
+        }
+        .pipeline {
+          gap: 0.4rem;
+        }
+        .pipe-arrow {
+          display: none;
+        }
+        .demo-body {
+          grid-template-columns: 1fr;
+        }
+        .demo-editor-pane {
+          border-right: none;
+          border-bottom: 1px solid var(--border);
+        }
+        .demo-footer {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .run-btn,
+        .clear-btn {
+          width: 100%;
+          justify-content: center;
+        }
+        .status-pill {
+          margin-left: 0;
+          justify-content: center;
+        }
+      }
+
+      @media (max-width: 480px) {
+        h1 {
+          font-size: clamp(2.3rem, 10vw, 3.6rem);
+        }
+        .hero-sub {
+          font-size: 0.9rem;
+        }
+        .hero-cta .btn {
+          width: 100%;
+          justify-content: center;
+        }
+        .section-label {
+          font-size: 0.6rem;
+        }
+        .prec-table th,
+        .prec-table td {
+          padding: 0.5rem 0.7rem;
+          font-size: 0.72rem;
+        }
+        .arch-card {
+          padding: 1.1rem;
+        }
+        #editor,
+        #output {
+          font-size: 0.75rem;
+        }
+        .snippets {
+          padding: 0.6rem 1rem;
+        }
+        .snippet-btn {
+          font-size: 0.6rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ── Nav ──────────────────────────────────────────────────────────────── -->
+    <nav>
+      <div class="nav-logo">C<span>-Lite</span></div>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#architecture">Architecture</a></li>
+        <li><a href="#grammar">Grammar</a></li>
+        <li><a href="#demo">Demo</a></li>
+        <li><a href="#tests">Tests</a></li>
+      </ul>
+    </nav>
+
+    <!-- ── Hero ─────────────────────────────────────────────────────────────── -->
+    <section id="hero">
+      <div class="hero-grid"></div>
+      <div class="hero-glow"></div>
+
+      <div class="hero-badge">
+        CO523 · Programming Languages · University of Peradeniya
+      </div>
+
+      <h1>
+        <span class="accent">C-Lite</span><br />
+        <span class="accent2">Inter</span>preter
+      </h1>
+
+      <p class="hero-sub">
+        A Python-based tree-walking interpreter for a simplified subset of C —
+        demonstrating lexical analysis, recursive descent parsing, and semantic
+        evaluation.
+      </p>
+
+      <div class="hero-cta">
+        <a href="#demo" class="btn btn-primary">▶ Try Live Demo</a>
+        <a href="#architecture" class="btn btn-outline">Explore Architecture</a>
+        <a
+          href="https://github.com/cepdnaclk/e20-co523-C_LITE-Interpreter"
+          class="btn btn-outline"
+          target="_blank"
+          rel="noopener"
+          >GitHub Repo</a
+        >
+        <a
+          href="../general/CO523_CLite_Report.pdf"
+          class="btn btn-outline"
+          target="_blank"
+          rel="noopener"
+          >Project Report</a
+        >
+      </div>
+
+      <div class="pipeline">
+        <div class="pipe-node">Source Code</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-node">Lexer</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-node">Tokens</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-node">Parser</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-node">AST</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-node">Interpreter</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-node">Output</div>
+      </div>
+    </section>
+
+    <!-- ── Features ─────────────────────────────────────────────────────────── -->
+    <section id="features">
+      <div class="container">
+        <div class="reveal">
+          <div class="section-label">Language Features</div>
+          <h2>What C-Lite Supports</h2>
+          <p class="section-desc">
+            A carefully chosen subset of C that covers the essential constructs
+            needed to demonstrate a complete interpreter pipeline.
+          </p>
+        </div>
+        <div class="features-grid reveal">
+          <div class="feature-card">
+            <div class="feature-icon">🔢</div>
+            <h3>Two Data Types</h3>
+            <p>
+              <code>int</code> (32-bit integer) and
+              <code>float</code> (double-precision). Type coercion follows C
+              semantics — floats assigned to <code>int</code> are truncated.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">📐</div>
+            <h3>Arithmetic & Precedence</h3>
+            <p>
+              Full <code>+ - * /</code> support with correct operator precedence
+              encoded structurally in the grammar. Parentheses override at any
+              depth.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">⚖️</div>
+            <h3>Comparisons</h3>
+            <p>
+              Comparison operators <code>&gt;</code> <code>&lt;</code>
+              <code>==</code> return integer 0 or 1 — exactly as C does — usable
+              directly in conditional expressions.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🔀</div>
+            <h3>If / Else Branching</h3>
+            <p>
+              Full <code>if (expr) { } else { }</code> with arbitrary nesting.
+              Each block creates its own lexical scope with a parent-pointer
+              chain.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🖨️</div>
+            <h3>printf Output</h3>
+            <p>
+              Built-in <code>printf(a, b, ...)</code> accepts multiple
+              comma-separated expressions and prints space-separated values to
+              the output.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">💬</div>
+            <h3>Comments</h3>
+            <p>
+              Both single-line <code>// ...</code> and multi-line
+              <code>/* ... */</code> comments are silently consumed during
+              lexical analysis.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🔍</div>
+            <h3>Block Scoping</h3>
+            <p>
+              Variables declared inside <code>if</code>/<code>else</code> blocks
+              are destroyed on exit. Inner scopes can read and modify outer
+              variables.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🚨</div>
+            <h3>Precise Error Reporting</h3>
+            <p>
+              Three distinct error types: <code>LexerError</code>,
+              <code>ParseError</code>, and <code>RuntimeError_</code> — each
+              with line numbers and descriptive messages.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Architecture ──────────────────────────────────────────────────────── -->
+    <section id="architecture">
+      <div class="container">
+        <div class="reveal">
+          <div class="section-label">System Design</div>
+          <h2>Three-Phase Architecture</h2>
+          <p class="section-desc">
+            Four independent Python modules, each with a single responsibility,
+            communicating through clean interfaces.
+          </p>
+        </div>
+        <div class="arch-flow reveal">
+          <div class="arch-card">
+            <div class="arch-num">01</div>
+            <h3>Lexical Analyzer</h3>
+            <div class="file">src/lexer.py</div>
+            <p>
+              Hand-written character-by-character scanner. Classifies tokens
+              into keywords, identifiers, literals, operators, and symbols in a
+              single linear pass with one character of lookahead.
+            </p>
+          </div>
+          <div class="arch-card">
+            <div class="arch-num">02</div>
+            <h3>AST Nodes</h3>
+            <div class="file">src/ast_nodes.py</div>
+            <p>
+              Pure data containers defined as Python <code>dataclasses</code>.
+              Immutable node types for every expression and statement kind in
+              the language.
+            </p>
+          </div>
+          <div class="arch-card">
+            <div class="arch-num">03</div>
+            <h3>Recursive Descent Parser</h3>
+            <div class="file">src/parser.py</div>
+            <p>
+              Each EBNF non-terminal maps directly to a method. LL(1) lookahead
+              selects productions. Operator precedence encoded structurally — no
+              precedence table needed.
+            </p>
+          </div>
+          <div class="arch-card">
+            <div class="arch-num">04</div>
+            <h3>Tree-Walking Interpreter</h3>
+            <div class="file">src/interpreter.py</div>
+            <p>
+              Walks the AST recursively. Scoped symbol table implemented as a
+              parent-pointer chain. Type coercion and C-compatible integer
+              division at assignment time.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Grammar ───────────────────────────────────────────────────────────── -->
+    <section id="grammar">
+      <div class="container">
+        <div class="reveal">
+          <div class="section-label">Formal Specification</div>
+          <h2>EBNF Grammar</h2>
+          <p class="section-desc">
+            The complete LL(1) grammar. Operator precedence is encoded through
+            rule stratification — no disambiguation logic needed.
+          </p>
+        </div>
+        <div class="grammar-grid reveal">
+          <div>
+            <div class="grammar-block">
+              <h3>Statements</h3>
+              <pre><span class="kw">program</span>     <span class="op">=</span> { statement } EOF
+
+<span class="kw">statement</span>   <span class="op">=</span> var_decl
+            | assignment
+            | if_stmt
+            | printf_stmt
+
+<span class="kw">var_decl</span>    <span class="op">=</span> type IDENT <span class="str">';'</span>
+<span class="kw">type</span>        <span class="op">=</span> <span class="str">'int'</span> | <span class="str">'float'</span>
+
+<span class="kw">assignment</span>  <span class="op">=</span> IDENT <span class="str">'='</span> expr <span class="str">';'</span>
+
+<span class="kw">if_stmt</span>     <span class="op">=</span> <span class="str">'if'</span> <span class="str">'('</span> expr <span class="str">')'</span>
+              block [ <span class="str">'else'</span> block ]
+<span class="kw">block</span>       <span class="op">=</span> <span class="str">'{'</span> { statement } <span class="str">'}'</span>
+
+<span class="kw">printf_stmt</span> <span class="op">=</span> <span class="str">'printf'</span> <span class="str">'('</span> arg_list <span class="str">')'</span> <span class="str">';'</span>
+<span class="kw">arg_list</span>    <span class="op">=</span> expr { <span class="str">','</span> expr }</pre>
+            </div>
+            <div class="grammar-block" style="margin-top: 1rem">
+              <h3>Expressions — Precedence Chain</h3>
+              <pre><span class="kw">expr</span>           <span class="op">=</span> comparison
+<span class="kw">comparison</span>     <span class="op">=</span> addition
+                 { ( <span class="str">'=='</span> | <span class="str">'&lt;'</span> | <span class="str">'&gt;'</span> ) addition }
+<span class="kw">addition</span>       <span class="op">=</span> multiplication
+                 { ( <span class="str">'+'</span> | <span class="str">'-'</span> ) multiplication }
+<span class="kw">multiplication</span> <span class="op">=</span> unary
+                 { ( <span class="str">'*'</span> | <span class="str">'/'</span> ) unary }
+<span class="kw">unary</span>          <span class="op">=</span> <span class="str">'-'</span> unary | primary
+<span class="kw">primary</span>        <span class="op">=</span> INT_LIT | FLOAT_LIT
+               | IDENT | <span class="str">'('</span> expr <span class="str">')'</span></pre>
+            </div>
+          </div>
+          <div>
+            <div class="grammar-block">
+              <h3>Operator Precedence Table</h3>
+              <table class="prec-table">
+                <thead>
+                  <tr>
+                    <th>Level</th>
+                    <th>Operators</th>
+                    <th>Assoc.</th>
+                    <th>Priority</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>1</td>
+                    <td><code>== &lt; &gt;</code></td>
+                    <td>Left</td>
+                    <td><span class="badge badge-low">Lowest</span></td>
+                  </tr>
+                  <tr>
+                    <td>2</td>
+                    <td><code>+ -</code></td>
+                    <td>Left</td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td>3</td>
+                    <td><code>* /</code></td>
+                    <td>Left</td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td>4</td>
+                    <td>unary <code>-</code></td>
+                    <td>Right</td>
+                    <td><span class="badge badge-high">Highest</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="grammar-block" style="margin-top: 1rem">
+              <h3>Lexical Tokens</h3>
+              <pre><span class="kw">INT_LIT</span>   <span class="op">=</span> digit { digit }
+<span class="kw">FLOAT_LIT</span> <span class="op">=</span> digit { digit } <span class="str">'.'</span>
+            digit { digit }
+<span class="kw">IDENT</span>     <span class="op">=</span> letter
+            { letter | digit | <span class="str">'_'</span> }
+
+<span class="cm">// Keywords</span>
+<span class="str">'int'</span>  <span class="str">'float'</span>  <span class="str">'if'</span>
+<span class="str">'else'</span>  <span class="str">'printf'</span>
+
+<span class="cm">// Comments (silently consumed)</span>
+<span class="cm">// single-line</span>
+<span class="cm">/* multi-line */</span></pre>
+            </div>
+            <div class="grammar-block" style="margin-top: 1rem">
+              <h3>Type System Notes</h3>
+              <pre><span class="cm">// float → int : truncated (C-style)</span>
+<span class="kw">int</span> x<span class="op">;</span>  x <span class="op">=</span> <span class="str">3.9</span><span class="op">;</span>  <span class="cm">// x = 3</span>
+
+<span class="cm">// int → float : widened</span>
+<span class="kw">float</span> f<span class="op">;</span> f <span class="op">=</span> <span class="str">2</span><span class="op">;</span>    <span class="cm">// f = 2.0</span>
+
+<span class="cm">// int/int → floor division</span>
+<span class="str">7</span> <span class="op">/</span> <span class="str">2</span>  <span class="cm">// → 3</span>
+
+<span class="cm">// float/float → true division</span>
+<span class="str">7.0</span> <span class="op">/</span> <span class="str">2.0</span>  <span class="cm">// → 3.5</span></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Demo ──────────────────────────────────────────────────────────────── -->
+    <section id="demo">
+      <div class="container">
+        <div class="reveal">
+          <div class="section-label">Live Playground</div>
+          <h2>Try the Interpreter</h2>
+          <p class="section-desc">
+            Your C-Lite code runs entirely in the browser using Pyodide — the
+            real Python interpreter compiled to WebAssembly. No server involved.
+          </p>
+        </div>
+        <div class="demo-wrapper reveal">
+          <div class="demo-toolbar">
+            <div class="demo-dots">
+              <div class="dot dot-r"></div>
+              <div class="dot dot-y"></div>
+              <div class="dot dot-g"></div>
+            </div>
+            <div class="demo-title">clite-playground.c</div>
+            <div style="width: 60px"></div>
+          </div>
+
+          <div class="snippets">
+            <button class="snippet-btn" onclick="loadSnippet('arithmetic')">
+              Arithmetic
+            </button>
+            <button class="snippet-btn" onclick="loadSnippet('conditional')">
+              Conditional
+            </button>
+            <button class="snippet-btn" onclick="loadSnippet('float')">
+              Float Math
+            </button>
+            <button class="snippet-btn" onclick="loadSnippet('nested')">
+              Nested If
+            </button>
+            <button class="snippet-btn" onclick="loadSnippet('scope')">
+              Scoping
+            </button>
+            <button class="snippet-btn" onclick="loadSnippet('error')">
+              Error
+            </button>
+          </div>
+
+          <div class="demo-body">
+            <div class="demo-editor-pane">
+              <div class="pane-label">
+                <span>Editor</span>
+                <span style="color: var(--accent2); font-size: 0.6rem"
+                  >C-Lite</span
+                >
+              </div>
+              <textarea
+                id="editor"
+                spellcheck="false"
+                placeholder="// Write your C-Lite code here...
+int x;
+x = 42;
+printf(x);"
+              >
+// Simple arithmetic demo
+int a;
+int b;
+int c;
+a = 10;
+b = 3;
+c = a * b + 1;
+printf(c);
+</textarea
+              >
+            </div>
+            <div class="demo-output-pane">
+              <div class="pane-label">
+                <span>Output</span>
+                <span
+                  id="exec-time"
+                  style="font-size: 0.6rem; color: var(--muted)"
+                ></span>
+              </div>
+              <div id="output">
+                <div class="out-line">
+                  <span class="out-info"
+                    >// Click Run or press Ctrl+Enter to execute</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="demo-footer">
+            <button class="run-btn" id="run-btn" onclick="runCode()" disabled>
+              <span id="run-label">⏳ Loading Python...</span>
+            </button>
+            <button class="clear-btn" onclick="clearOutput()">Clear</button>
+            <div class="status-pill">
+              <div class="status-dot loading" id="status-dot"></div>
+              <span id="status-text">Initialising Pyodide</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Tests ─────────────────────────────────────────────────────────────── -->
+    <section id="tests">
+      <div class="container">
+        <div class="reveal">
+          <div class="section-label">Test Suite</div>
+          <h2>15 Built-in Tests · 92 pytest Tests</h2>
+          <p class="section-desc">
+            All tests pass. The built-in suite covers every language feature;
+            the pytest suite adds unit-level coverage per module.
+          </p>
+        </div>
+        <div class="tests-grid reveal">
+          <div class="test-card">
+            <div class="test-id">T01</div>
+            <div class="test-info">
+              <h4>Integer declaration &amp; assignment</h4>
+              <p>int type, declaration, assignment</p>
+              <div class="test-pass">✓ PASS</div>
+            </div>
+          </div>
+          <div class="test-card">
+            <div class="test-id">T02</div>
+            <div class="test-info">
+              <h4>Float declaration &amp; assignment</h4>
+              <p>float type, float literals</p>
+              <div class="test-pass">✓ PASS</div>
+            </div>
+          </div>
+          <div class="test-card">
+            <div class="test-id">T03</div>
+            <div class="test-info">
+              <h4>Arithmetic operations</h4>
+              <p>Operator precedence (* before +)</p>
+              <div class="test-pass">✓ PASS</div>
+            </div>
+          </div>
+          <div class="test-card">
+            <div class="test-id">T04</div>
+            <div class="test-info">
+              <h4>Integer division</h4>
+              <p>int / int = floor division</p>
+              <div class="test-pass">✓ PASS</div>
+            </div>
+          </div>
+          <div class="test-card">
+            <div class="test-id">T05</div>
+            <div class="test-info">
+              <h4>Float division</h4>
+              <p>float / float = true division</p>
+              <div class="test-pass">✓ PASS</div>
+            </div>
+          </div>
+          <div class="test-card">
+            <div class="test-id">T06</div>
+            <div class="test-info">
+              <h4>if — true branch</h4>
+              <p>if with true condition</p>
+              <div class="test-pass">✓ PASS</div>
+            </div>
+          </div>
+          <div class="test-card">
+            <div class="test-id">T07</div>
+            <div class="test-info">
+              <h4>if-else — false branch</h4>
+              <p>if-else with false condition</p>
+              <div class="test-pass">✓ PASS</div>
+            </div>
+          </div>
+          <div class="test-card">
+            <div class="test-id">T08</div>
+            <div class="test-info">
+              <h4>Equality comparison</h4>
+              <p>== operator</p>
+              <div class="test-pass">✓ PASS</div>
+            </div>
+          </div>
+          <div class="test-card">
+            <div class="test-id">T09</div>
+            <div class="test-info">
+              <h4>Nested if-else</h4>
+              <p>Multi-level conditional branching</p>
+              <div class="test-pass">✓ PASS</div>
+            </div>
+          </div>
+          <div class="test-card">
+            <div class="test-id">T10</div>
+            <div class="test-info">
+              <h4>Multiple printf args</h4>
+              <p>printf with comma-separated args</p>
+              <div class="test-pass">✓ PASS</div>
+            </div>
+          </div>
+          <div class="test-card">
+            <div class="test-id">T11</div>
+            <div class="test-info">
+              <h4>Parenthesised expression</h4>
+              <p>Grouping with parentheses</p>
+              <div class="test-pass">✓ PASS</div>
+            </div>
+          </div>
+          <div class="test-card">
+            <div class="test-id">T12</div>
+            <div class="test-info">
+              <h4>Unary minus</h4>
+              <p>Negative literals via unary -</p>
+              <div class="test-pass">✓ PASS</div>
+            </div>
+          </div>
+          <div class="test-card">
+            <div class="test-id">T13</div>
+            <div class="test-info">
+              <h4>Undeclared variable</h4>
+              <p>Semantic error detection</p>
+              <div class="test-pass">✓ PASS</div>
+            </div>
+          </div>
+          <div class="test-card">
+            <div class="test-id">T14</div>
+            <div class="test-info">
+              <h4>Use before assignment</h4>
+              <p>Semantic error detection</p>
+              <div class="test-pass">✓ PASS</div>
+            </div>
+          </div>
+          <div class="test-card">
+            <div class="test-id">T15</div>
+            <div class="test-info">
+              <h4>Float + int type widening</h4>
+              <p>Mixed-type arithmetic expression</p>
+              <div class="test-pass">✓ PASS</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Footer ─────────────────────────────────────────────────────────────── -->
+    <footer>
+      <div class="footer-inner">
+        <div class="footer-logo">C-Lite</div>
+        <div class="footer-info">
+          CO523 – Programming Languages<br />
+          Department of Computer Engineering<br />
+          Faculty of Engineering, University of Peradeniya<br />
+          <br />
+          Janakantha S.M.B.G. &nbsp;·&nbsp; E/20/157
+        </div>
+        <div class="footer-divider"></div>
+        <div class="footer-meta">
+          Built with Python · Pyodide · Vanilla JS · No frameworks
+        </div>
+      </div>
+    </footer>
+
+    <!-- ── Scripts ────────────────────────────────────────────────────────────── -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+    <script>
+      // ── Scroll reveal ──────────────────────────────────────────────────────────
+      const observer = new IntersectionObserver(
+        (entries) =>
+          entries.forEach((e) => {
+            if (e.isIntersecting) e.target.classList.add("visible");
+          }),
+        { threshold: 0.1 },
+      );
+      document
+        .querySelectorAll(".reveal")
+        .forEach((el) => observer.observe(el));
+
+      // ── Snippet bank ───────────────────────────────────────────────────────────
+      const SNIPPETS = {
+        arithmetic: `// Arithmetic & operator precedence
+int a;
+int b;
+int c;
+a = 10;
+b = 3;
+c = a * b + 1;   // = 31 (not 40)
+printf(c);`,
+
+        conditional: `// If-else conditional
+int score;
+score = 75;
+if (score > 90) {
+    printf(1);
+} else {
+    if (score > 50) {
+        printf(2);
+    } else {
+        printf(3);
+    }
+}`,
+
+        float: `// Float arithmetic
+float radius;
+float area;
+radius = 5.0;
+area = 3.14 * radius * radius;
+printf(area);`,
+
+        nested: `// Nested if-else grade classifier
+int score;
+score = 82;
+if (score > 90) {
+    printf(1);
+} else {
+    if (score > 75) {
+        printf(2);
+    } else {
+        if (score > 50) {
+            printf(3);
+        } else {
+            printf(4);
+        }
+    }
+}`,
+
+        scope: `// Block scoping demo
+int result;
+result = 0;
+if (1 > 0) {
+    int inner;
+    inner = 99;
+    result = inner;
+}
+// 'inner' no longer exists here
+printf(result);`,
+
+        error: `// Semantic error: undeclared variable
+// This will produce a RuntimeError
+x = 10;
+printf(x);`,
+      };
+
+      function loadSnippet(name) {
+        document.getElementById("editor").value = SNIPPETS[name];
+        clearOutput();
+      }
+
+      // ── Pyodide setup ──────────────────────────────────────────────────────────
+      let pyodide = null;
+
+      // The full C-Lite interpreter as a Python string to exec in Pyodide
+      const CLITE_SRC = `
+from enum import Enum, auto
+from dataclasses import dataclass, field
+from typing import List, Optional, Union
+
+# ── Token types ──
+class TokenType(Enum):
+    INT=auto();FLOAT=auto();IF=auto();ELSE=auto();PRINTF=auto()
+    INT_LIT=auto();FLOAT_LIT=auto();IDENT=auto()
+    PLUS=auto();MINUS=auto();STAR=auto();SLASH=auto()
+    ASSIGN=auto();EQ=auto();LT=auto();GT=auto()
+    LPAREN=auto();RPAREN=auto();LBRACE=auto();RBRACE=auto()
+    SEMI=auto();COMMA=auto();EOF=auto()
+
+KEYWORDS={'int':TokenType.INT,'float':TokenType.FLOAT,'if':TokenType.IF,'else':TokenType.ELSE,'printf':TokenType.PRINTF}
+
+class Token:
+    def __init__(self,ttype,value,line):self.ttype=ttype;self.value=value;self.line=line
+    def __repr__(self):return f"Token({self.ttype.name},{self.value!r},line={self.line})"
+
+class LexerError(Exception):pass
+class ParseError(Exception):pass
+class RuntimeError_(Exception):pass
+
+# ── Lexer ──
+class Lexer:
+    def __init__(self,source):self.source=source;self.pos=0;self.line=1;self.tokens=[]
+    def error(self,msg):raise LexerError(f"[Lexer] Line {self.line}: {msg}")
+    def peek(self,offset=0):
+        idx=self.pos+offset
+        return self.source[idx] if idx<len(self.source) else '\\0'
+    def advance(self):
+        ch=self.source[self.pos];self.pos+=1
+        if ch=='\\n':self.line+=1
+        return ch
+    def skip_whitespace_and_comments(self):
+        while self.pos<len(self.source):
+            ch=self.peek()
+            if ch in(' ','\\t','\\r','\\n'):self.advance()
+            elif ch=='/' and self.peek(1)=='/':
+                while self.pos<len(self.source) and self.peek()!='\\n':self.advance()
+            elif ch=='/' and self.peek(1)=='*':
+                self.advance();self.advance()
+                while self.pos<len(self.source):
+                    if self.peek()=='*' and self.peek(1)=='/':self.advance();self.advance();break
+                    self.advance()
+            else:break
+    def read_number(self):
+        start=self.pos;is_float=False
+        while self.pos<len(self.source) and self.peek().isdigit():self.advance()
+        if self.peek()=='.' and self.peek(1).isdigit():
+            is_float=True;self.advance()
+            while self.pos<len(self.source) and self.peek().isdigit():self.advance()
+        lexeme=self.source[start:self.pos]
+        return Token(TokenType.FLOAT_LIT,float(lexeme),self.line) if is_float else Token(TokenType.INT_LIT,int(lexeme),self.line)
+    def read_ident_or_keyword(self):
+        start=self.pos
+        while self.pos<len(self.source) and (self.peek().isalnum() or self.peek()=='_'):self.advance()
+        lexeme=self.source[start:self.pos];ttype=KEYWORDS.get(lexeme,TokenType.IDENT)
+        return Token(ttype,lexeme,self.line)
+    def tokenize(self):
+        single={'+':TokenType.PLUS,'-':TokenType.MINUS,'*':TokenType.STAR,'/':TokenType.SLASH,
+                '(':TokenType.LPAREN,')':TokenType.RPAREN,'{':TokenType.LBRACE,'}':TokenType.RBRACE,
+                ';':TokenType.SEMI,',':TokenType.COMMA,'<':TokenType.LT,'>':TokenType.GT}
+        while True:
+            self.skip_whitespace_and_comments()
+            if self.pos>=len(self.source):self.tokens.append(Token(TokenType.EOF,None,self.line));break
+            ch=self.peek()
+            if ch.isdigit():self.tokens.append(self.read_number())
+            elif ch.isalpha() or ch=='_':self.tokens.append(self.read_ident_or_keyword())
+            elif ch=='=' and self.peek(1)=='=':self.advance();self.advance();self.tokens.append(Token(TokenType.EQ,'==',self.line))
+            elif ch=='=':self.advance();self.tokens.append(Token(TokenType.ASSIGN,'=',self.line))
+            elif ch in single:self.advance();self.tokens.append(Token(single[ch],ch,self.line))
+            else:self.error(f"Unexpected character: {ch!r}")
+        return self.tokens
+
+# ── AST nodes ──
+@dataclass
+class IntLiteral:value:int
+@dataclass
+class FloatLiteral:value:float
+@dataclass
+class Identifier:name:str
+@dataclass
+class BinaryOp:op:str;left:object;right:object
+@dataclass
+class VarDecl:dtype:str;name:str
+@dataclass
+class Assignment:name:str;expr:object
+@dataclass
+class IfStatement:
+    condition:object;then_block:list;else_block:object=field(default=None)
+@dataclass
+class PrintfStatement:args:list
+@dataclass
+class Program:statements:list
+
+# ── Parser ──
+class Parser:
+    def __init__(self,tokens):self.tokens=tokens;self.pos=0
+    def current(self):return self.tokens[self.pos]
+    def peek_type(self):return self.current().ttype
+    def match(self,*ttypes):return self.peek_type() in ttypes
+    def expect(self,ttype):
+        tok=self.current()
+        if tok.ttype!=ttype:raise ParseError(f"[Parser] Line {tok.line}: Expected {ttype.name}, got {tok.ttype.name} ({tok.value!r})")
+        self.pos+=1;return tok
+    def advance(self):tok=self.current();self.pos+=1;return tok
+    def parse(self):
+        stmts=[]
+        while not self.match(TokenType.EOF):stmts.append(self.statement())
+        return Program(stmts)
+    def statement(self):
+        if self.match(TokenType.INT,TokenType.FLOAT):return self.var_decl()
+        elif self.match(TokenType.IF):return self.if_stmt()
+        elif self.match(TokenType.PRINTF):return self.printf_stmt()
+        elif self.match(TokenType.IDENT):return self.assignment()
+        else:
+            tok=self.current();raise ParseError(f"[Parser] Line {tok.line}: Unexpected token {tok.ttype.name} ({tok.value!r})")
+    def var_decl(self):
+        dtype_tok=self.advance();name_tok=self.expect(TokenType.IDENT);self.expect(TokenType.SEMI)
+        return VarDecl(dtype=dtype_tok.value,name=name_tok.value)
+    def assignment(self):
+        name_tok=self.expect(TokenType.IDENT);self.expect(TokenType.ASSIGN);expr=self.expr();self.expect(TokenType.SEMI)
+        return Assignment(name=name_tok.value,expr=expr)
+    def if_stmt(self):
+        self.expect(TokenType.IF);self.expect(TokenType.LPAREN);cond=self.expr();self.expect(TokenType.RPAREN)
+        then_block=self.block();else_block=None
+        if self.match(TokenType.ELSE):self.advance();else_block=self.block()
+        return IfStatement(condition=cond,then_block=then_block,else_block=else_block)
+    def block(self):
+        self.expect(TokenType.LBRACE);stmts=[]
+        while not self.match(TokenType.RBRACE,TokenType.EOF):stmts.append(self.statement())
+        self.expect(TokenType.RBRACE);return stmts
+    def printf_stmt(self):
+        self.expect(TokenType.PRINTF);self.expect(TokenType.LPAREN);args=[self.expr()]
+        while self.match(TokenType.COMMA):self.advance();args.append(self.expr())
+        self.expect(TokenType.RPAREN);self.expect(TokenType.SEMI)
+        return PrintfStatement(args=args)
+    def expr(self):return self.comparison()
+    def comparison(self):
+        left=self.addition()
+        while self.match(TokenType.EQ,TokenType.LT,TokenType.GT):
+            op_tok=self.advance();right=self.addition();left=BinaryOp(op=op_tok.value,left=left,right=right)
+        return left
+    def addition(self):
+        left=self.multiplication()
+        while self.match(TokenType.PLUS,TokenType.MINUS):
+            op_tok=self.advance();right=self.multiplication();left=BinaryOp(op=op_tok.value,left=left,right=right)
+        return left
+    def multiplication(self):
+        left=self.unary()
+        while self.match(TokenType.STAR,TokenType.SLASH):
+            op_tok=self.advance();right=self.unary();left=BinaryOp(op=op_tok.value,left=left,right=right)
+        return left
+    def unary(self):
+        if self.match(TokenType.MINUS):self.advance();operand=self.unary();return BinaryOp(op='-',left=IntLiteral(0),right=operand)
+        return self.primary()
+    def primary(self):
+        tok=self.current()
+        if tok.ttype==TokenType.INT_LIT:self.advance();return IntLiteral(tok.value)
+        elif tok.ttype==TokenType.FLOAT_LIT:self.advance();return FloatLiteral(tok.value)
+        elif tok.ttype==TokenType.IDENT:self.advance();return Identifier(tok.value)
+        elif tok.ttype==TokenType.LPAREN:
+            self.advance();e=self.expr();self.expect(TokenType.RPAREN);return e
+        else:raise ParseError(f"[Parser] Line {tok.line}: Expected expression, got {tok.ttype.name} ({tok.value!r})")
+
+# ── Symbol Table ──
+class SymbolTable:
+    def __init__(self,parent=None):self._table={};self.parent=parent
+    def declare(self,name,dtype):
+        if name in self._table:raise RuntimeError_(f"Variable '{name}' already declared in this scope.")
+        self._table[name]={'type':dtype,'value':None}
+    def assign(self,name,value):
+        scope=self._lookup_scope(name)
+        if scope is None:raise RuntimeError_(f"Variable '{name}' not declared.")
+        entry=scope._table[name]
+        if entry['type']=='int':
+            if not isinstance(value,(int,float)):raise RuntimeError_(f"Type error: cannot assign to int '{name}'.")
+            value=int(value)
+        elif entry['type']=='float':
+            if not isinstance(value,(int,float)):raise RuntimeError_(f"Type error: cannot assign to float '{name}'.")
+            value=float(value)
+        scope._table[name]['value']=value
+    def get(self,name):
+        scope=self._lookup_scope(name)
+        if scope is None:raise RuntimeError_(f"Variable '{name}' not declared.")
+        entry=scope._table[name]
+        if entry['value'] is None:raise RuntimeError_(f"Variable '{name}' used before assignment.")
+        return entry['value']
+    def _lookup_scope(self,name):
+        if name in self._table:return self
+        if self.parent:return self.parent._lookup_scope(name)
+        return None
+
+# ── Interpreter ──
+class Interpreter:
+    def __init__(self,output_callback=None):
+        self.global_scope=SymbolTable()
+        self._output=output_callback if output_callback else print
+    def execute(self,program):self._exec_stmts(program.statements,self.global_scope)
+    def _exec_stmts(self,stmts,scope):
+        for stmt in stmts:self._exec_stmt(stmt,scope)
+    def _exec_stmt(self,stmt,scope):
+        if isinstance(stmt,VarDecl):scope.declare(stmt.name,stmt.dtype)
+        elif isinstance(stmt,Assignment):val=self._eval_expr(stmt.expr,scope);scope.assign(stmt.name,val)
+        elif isinstance(stmt,IfStatement):
+            cond=self._eval_expr(stmt.condition,scope);child_scope=SymbolTable(parent=scope)
+            if cond:self._exec_stmts(stmt.then_block,child_scope)
+            elif stmt.else_block is not None:
+                else_scope=SymbolTable(parent=scope);self._exec_stmts(stmt.else_block,else_scope)
+        elif isinstance(stmt,PrintfStatement):
+            parts=[]
+            for arg in stmt.args:
+                val=self._eval_expr(arg,scope);parts.append(str(val))
+            self._output(' '.join(parts))
+        else:raise RuntimeError_(f"Unknown statement type: {type(stmt)}")
+    def _eval_expr(self,expr,scope):
+        if isinstance(expr,IntLiteral):return expr.value
+        elif isinstance(expr,FloatLiteral):return expr.value
+        elif isinstance(expr,Identifier):return scope.get(expr.name)
+        elif isinstance(expr,BinaryOp):
+            left=self._eval_expr(expr.left,scope);right=self._eval_expr(expr.right,scope);op=expr.op
+            if op=='+':return left+right
+            if op=='-':return left-right
+            if op=='*':return left*right
+            if op=='/':
+                if right==0:raise RuntimeError_("Division by zero.")
+                if isinstance(left,int) and isinstance(right,int):return left//right
+                return left/right
+            if op=='==':return int(left==right)
+            if op=='<':return int(left<right)
+            if op=='>':return int(left>right)
+            raise RuntimeError_(f"Unknown operator: {op}")
+        raise RuntimeError_(f"Unknown expression type: {type(expr)}")
+
+# ── Runner ──
+def run_clite(source):
+    output_lines=[]
+    tokens=Lexer(source).tokenize()
+    program=Parser(tokens).parse()
+    Interpreter(output_callback=lambda s:output_lines.append(s)).execute(program)
+    return output_lines
+`;
+
+      async function initPyodide() {
+        try {
+          setStatus("loading", "Loading Python runtime…");
+          pyodide = await loadPyodide();
+          setStatus("loading", "Loading C-Lite engine…");
+          await pyodide.runPythonAsync(CLITE_SRC);
+          setStatus("ready", "Ready");
+          const btn = document.getElementById("run-btn");
+          btn.disabled = false;
+          document.getElementById("run-label").textContent =
+            "▶ Run (Ctrl+Enter)";
+        } catch (e) {
+          setStatus("error", "Failed to load");
+          console.error(e);
+        }
+      }
+
+      function setStatus(state, text) {
+        const dot = document.getElementById("status-dot");
+        dot.className = "status-dot " + state;
+        document.getElementById("status-text").textContent = text;
+      }
+
+      function clearOutput() {
+        document.getElementById("output").innerHTML = "";
+        document.getElementById("exec-time").textContent = "";
+      }
+
+      async function runCode() {
+        if (!pyodide) return;
+        const source = document.getElementById("editor").value;
+        clearOutput();
+        const out = document.getElementById("output");
+        const t0 = performance.now();
+
+        try {
+          setStatus("loading", "Running…");
+          const escaped = source
+            .replace(/\\/g, "\\\\")
+            .replace(/"""/g, '\\"\\"\\"');
+          const lines = await pyodide.runPythonAsync(
+            `run_clite("""${escaped}""")`,
+          );
+          const elapsed = (performance.now() - t0).toFixed(1);
+          document.getElementById("exec-time").textContent = `${elapsed}ms`;
+
+          const arr = lines.toJs ? lines.toJs() : Array.from(lines);
+          if (arr.length === 0) {
+            out.innerHTML =
+              '<div class="out-line"><span class="out-info">// No output produced</span></div>';
+          } else {
+            arr.forEach((line) => {
+              const div = document.createElement("div");
+              div.className = "out-line";
+              div.innerHTML = `<span class="out-arrow">▶</span><span class="out-ok">${escapeHtml(String(line))}</span>`;
+              out.appendChild(div);
+            });
+          }
+          setStatus("ready", "Ready");
+        } catch (e) {
+          const elapsed = (performance.now() - t0).toFixed(1);
+          document.getElementById("exec-time").textContent = `${elapsed}ms`;
+          const msg = e.message || String(e);
+          // extract just the meaningful part
+          const clean =
+            msg
+              .split("\n")
+              .filter((l) => l.includes("Error") || l.includes("error"))
+              .join(" ") || msg;
+          const div = document.createElement("div");
+          div.className = "out-line";
+          div.innerHTML = `<span class="out-arrow" style="color:var(--accent3)">✕</span><span class="out-err">${escapeHtml(clean)}</span>`;
+          out.appendChild(div);
+          setStatus("ready", "Ready");
+        }
+      }
+
+      function escapeHtml(s) {
+        return s
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      // Ctrl+Enter to run
+      document.getElementById("editor").addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          runCode();
+        }
+        // Tab key inserts spaces
+        if (e.key === "Tab") {
+          e.preventDefault();
+          const ta = e.target;
+          const start = ta.selectionStart;
+          ta.value =
+            ta.value.slice(0, start) + "    " + ta.value.slice(ta.selectionEnd);
+          ta.selectionStart = ta.selectionEnd = start + 4;
+        }
+      });
+
+      // Boot
+      initPyodide();
+    </script>
+  </body>
+</html>
