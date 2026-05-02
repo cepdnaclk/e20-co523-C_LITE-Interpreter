@@ -25,13 +25,13 @@ C-Lite supports the following language constructs:
 
 The interpreter is composed of four Python modules, each with a single well-defined responsibility:
 
-| Module | File | Responsibility |
-|---|---|---|
-| Lexical Analyzer | `lexer.py` | Converts source text into a flat token stream |
-| AST Nodes | `ast_nodes.py` | Defines dataclasses for every node in the Abstract Syntax Tree |
-| Parser | `parser.py` | Validates the token stream and builds the AST via recursive descent |
-| Interpreter | `interpreter.py` | Tree-walks the AST, maintains the symbol table, and produces output |
-| Entry Point | `main.py` | CLI runner, REPL, and built-in test suite |
+| Module           | File             | Responsibility                                                      |
+| ---------------- | ---------------- | ------------------------------------------------------------------- |
+| Lexical Analyzer | `lexer.py`       | Converts source text into a flat token stream                       |
+| AST Nodes        | `ast_nodes.py`   | Defines dataclasses for every node in the Abstract Syntax Tree      |
+| Parser           | `parser.py`      | Validates the token stream and builds the AST via recursive descent |
+| Interpreter      | `interpreter.py` | Tree-walks the AST, maintains the symbol table, and produces output |
+| Entry Point      | `main.py`        | CLI runner, REPL, and built-in test suite                           |
 
 ### Lexical Analyzer (`lexer.py`)
 
@@ -50,6 +50,7 @@ comparison > addition > multiplication > unary > primary
 Tree-walks the AST recursively. A **scoped, linked-chain symbol table** (`SymbolTable`) manages variable state, with each `if`/`else` block creating a new child scope pointing at the enclosing scope.
 
 **Semantic rules enforced:**
+
 - Variables must be declared before assignment or use
 - Redeclaration in the same scope is a runtime error
 - Reading a declared but unassigned variable is a runtime error
@@ -163,22 +164,22 @@ printf(area);
 
 All **15 built-in test cases** pass, covering:
 
-| ID | Feature Tested |
-|---|---|
-| T1 | `int` type, declaration, assignment |
-| T2 | `float` type, float literals |
-| T3 | Operator precedence (`*` before `+`) |
-| T4 | Integer division (`int / int` = floor division) |
-| T5 | Float division (`float / float` = true division) |
-| T6 | `if` with true condition |
-| T7 | `if-else` with false condition |
-| T8 | Equality comparison (`==`) |
-| T9 | Nested `if-else` |
-| T10 | `printf` with multiple comma-separated arguments |
-| T11 | Grouping with parentheses |
-| T12 | Unary minus |
-| T13 | Semantic error: undeclared variable |
-| T14 | Semantic error: use before assignment |
+| ID  | Feature Tested                                    |
+| --- | ------------------------------------------------- |
+| T1  | `int` type, declaration, assignment               |
+| T2  | `float` type, float literals                      |
+| T3  | Operator precedence (`*` before `+`)              |
+| T4  | Integer division (`int / int` = floor division)   |
+| T5  | Float division (`float / float` = true division)  |
+| T6  | `if` with true condition                          |
+| T7  | `if-else` with false condition                    |
+| T8  | Equality comparison (`==`)                        |
+| T9  | Nested `if-else`                                  |
+| T10 | `printf` with multiple comma-separated arguments  |
+| T11 | Grouping with parentheses                         |
+| T12 | Unary minus                                       |
+| T13 | Semantic error: undeclared variable               |
+| T14 | Semantic error: use before assignment             |
 | T15 | Mixed-type arithmetic (float + int type widening) |
 
 ---
@@ -195,10 +196,11 @@ Three distinct exception classes provide clean separation of concerns:
 
 ## Project Info
 
-| | |
-|---|---|
-| **Course** | CO523 – Programming Languages |
+|                 |                                                  |
+| --------------- | ------------------------------------------------ |
+| **Course**      | CO523 – Programming Languages                    |
 | **Institution** | University of Peradeniya, Faculty of Engineering |
-| **Department** | Computer Engineering |
-| **Author** | Janakantha S.M.B.G. (E/20/157) |
-| **Language** | Python |
+| **Department**  | Computer Engineering                             |
+| **Author**      | Janakantha S.M.B.G. (E/20/157)                   |
+| **Language**    | Python                                           |
+| **License**     | MIT License                                      |
