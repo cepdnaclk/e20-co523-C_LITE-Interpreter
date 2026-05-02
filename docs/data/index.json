@@ -1,4 +1,5 @@
 {
+  "title": "C_LITE Interpreter",
   "team": [
     {
       "name": "Janakantha S.M.B.G.",
@@ -13,5 +14,7 @@
     "Interpreter",
     "Python",
     "MIT License"
-  ]
+  ],
+  "image": "cover_page.png",
+  "thumbnail": "thumbnail.png"
 }
