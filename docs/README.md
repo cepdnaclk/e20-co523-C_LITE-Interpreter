@@ -71,8 +71,7 @@ CO523 – Programming Languages at the University of Peradeniya.
 
 ## Links
 
-- [Project Repository](https://github.com/cepdnaclk/{{ page.repository-name }}){:target="\_blank"}
-- [Project Page](https://cepdnaclk.github.io/{{ page.repository-name}}){:target="\_blank"}
+- [Project Repository](https://github.com/cepdnaclk/20-co523-C_LITE-Interpreter)
 - [Project Report (PDF)](../general/CO523_CLite_Report.pdf){:target="\_blank"}
 - [Department of Computer Engineering](http://www.ce.pdn.ac.lk/)
 - [University of Peradeniya](https://eng.pdn.ac.lk/)
