@@ -4,12 +4,12 @@ permalink: index.html
 
 # Please update this with your repository name and title
 repository-name: e20-co523-C_LITE-Interpreter
-title:
+title: C-Lite Interpreter
 ---
 
 [comment]: # "This is the standard layout for the project, but you can clean this and use your own template"
 
-# Project Title
+# C-Lite Interpreter
 
 ---
 
@@ -21,9 +21,7 @@ This is a sample image, to show how to add images to your page. To learn more op
 
 ## Team
 
-- eNumber, Name, [email](mailto:name@email.com)
-- eNumber, Name, [email](mailto:name@email.com)
-- eNumber, Name, [email](mailto:name@email.com)
+- E/20/157, Janakantha S.M.B.G., [e20157@eng.pdn.ac.lk](mailto:e20157@eng.pdn.ac.lk)
 
 ## Table of Contents
 
@@ -35,16 +33,47 @@ This is a sample image, to show how to add images to your page. To learn more op
 
 ## Introduction
 
-description of the real world problem and solution, impact
+This project implements a Python-based interpreter for C-Lite, a simplified
+subset of the C programming language. It demonstrates a complete language
+processing pipeline with lexical analysis, recursive descent parsing, and
+semantic evaluation. The interpreter is designed for educational use in
+CO523 – Programming Languages at the University of Peradeniya.
 
 ## Other Sub Topics
 
-.....
+### Features
+
+- Two data types: int and float
+- Variable declarations, assignments, and block scoping
+- Arithmetic and comparison operators with correct precedence
+- if/else conditional execution
+- printf for multi-argument output
+- Clear error reporting for lexer, parser, and runtime errors
+
+### Usage
+
+- Run a file: python main.py examples/sample.c
+- Start REPL: python main.py
+- Built-in tests: python main.py --test
+- Pytest suite: pytest tests/
+
+### Project Structure
+
+- src/lexer.py: lexical analyzer
+- src/parser.py: recursive descent parser
+- src/ast_nodes.py: AST node definitions
+- src/interpreter.py: tree-walking interpreter
+- docs/index.html: project page and demo
+
+### Report
+
+- Project report (PDF): general/CO523_CLite_Report.pdf
 
 ## Links
 
 - [Project Repository](https://github.com/cepdnaclk/{{ page.repository-name }}){:target="\_blank"}
 - [Project Page](https://cepdnaclk.github.io/{{ page.repository-name}}){:target="\_blank"}
+- [Project Report (PDF)](../general/CO523_CLite_Report.pdf){:target="\_blank"}
 - [Department of Computer Engineering](http://www.ce.pdn.ac.lk/)
 - [University of Peradeniya](https://eng.pdn.ac.lk/)
 
