@@ -1,16 +1,17 @@
 {
-    "team": [
-        {
-            "name": "Janakantha S.M.B.G.",
-            "email": "e20157@eng.pdn.ac.lk",
-            "eNumber": "E/20/157"
-        },
-    ],
-    "supervisors": [
-        {
-            "name": "Mr. Biswajith Dissanayake",
-            "email": "biswajithd@eng.pdn.ac.lk"
-        },
-    ],
-    "tags": ["CO523", "Compiler"]
+  "team": [
+    {
+      "name": "Janakantha S.M.B.G.",
+      "email": "e20157@eng.pdn.ac.lk",
+      "eNumber": "E/20/157"
+    }
+  ],
+  "tags": [
+    "CO523",
+    "Compiler Design",
+    "C_LITE",
+    "Interpreter",
+    "Python",
+    "MIT License"
+  ]
 }
